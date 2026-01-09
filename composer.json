@@ -1,0 +1,14 @@
+{
+    "name": "syntexa/module-dev-tools",
+    "description": "Lightweight developer tools for Syntexa Framework - monitoring, profiling, and debugging",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Syntexa\\DevTools\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.4"
+    }
+}
