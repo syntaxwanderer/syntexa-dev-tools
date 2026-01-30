@@ -35,6 +35,7 @@ http://localhost:9501/dev-tools
 - `GET /dev-tools/api/metrics` - JSON metrics endpoint
 - `GET /dev-tools/api/logs?file=error.log&lines=100&filter=error` - Log viewer API
 - `GET /dev-tools/api/profiler?limit=50` - Profiler events API
+- `GET /dev-tools/api/ai` - **AI endpoint** - Structured JSON data for AI assistants (see below)
 
 ## Features
 
@@ -62,6 +63,93 @@ http://localhost:9501/dev-tools
 - PHP 8.4+
 - Swoole extension
 - Syntexa Inspector module (for profiler functionality)
+
+## AI Endpoint
+
+The `/dev-tools/api/ai` endpoint provides structured JSON data optimized for AI assistant analysis. It returns comprehensive information about the server state, requests, errors, logs, profiler events, system information, blockchain status, database connections, and RabbitMQ configuration.
+
+### Usage
+
+```bash
+curl http://localhost:8080/dev-tools/api/ai | jq '.'
+```
+
+### Response Structure
+
+The endpoint returns a JSON object with the following sections:
+
+- **`meta`**: Server metadata (name, version, uptime, PHP/Swoole versions)
+- **`metrics`**: Swoole metrics, application metrics, memory usage
+- **`requests`**: Last 50 HTTP requests (without body, with full headers and segments)
+- **`errors`**: Error events with full stack traces
+- **`logs`**: Recent log entries from all log files
+- **`profiler`**: Profiler events and statistics
+- **`system`**: Module registry, routes, autoloader, cache information
+- **`blockchain`**: Blockchain status, nodes, transactions (if enabled)
+- **`database`**: Database connection information and statistics
+- **`rabbitmq`**: RabbitMQ configuration and queue status (if enabled)
+- **`recommendations`**: AI-generated recommendations based on current state
+
+### Example Response
+
+```json
+{
+  "meta": {
+    "timestamp": "2026-01-16T12:00:00Z",
+    "server": {
+      "name": "Master Server (Blockchain)",
+      "version": "1.0.0",
+      "uptime": 3600,
+      "environment": "production",
+      "php_version": "8.4.16",
+      "swoole_version": "6.1.6"
+    }
+  },
+  "metrics": {
+    "swoole": {
+      "connections": {"active": 5, "total": 100},
+      "workers": {"active": 4, "idle": 0, "total": 4},
+      "requests": {"total": 1234, "per_second": 0.34},
+      "coroutines": {"active": 2}
+    },
+    "application": {
+      "requests": {"total": 1234, "errors": 5, "success": 1229},
+      "uptime": 3600,
+      "average_response_time": 45.2
+    },
+    "memory": {
+      "current": 8388608,
+      "peak": 16777216,
+      "limit": 134217728
+    }
+  },
+  "requests": [...],
+  "errors": [...],
+  "logs": {...},
+  "profiler": {...},
+  "system": {...},
+  "blockchain": {...},
+  "database": {...},
+  "rabbitmq": {...},
+  "recommendations": [...]
+}
+```
+
+### Features
+
+- **No caching**: Always returns fresh data
+- **No request body**: Requests section excludes body to reduce payload size
+- **Full stack traces**: Errors include complete stack traces for debugging
+- **Comprehensive data**: Single endpoint provides all necessary information for AI analysis
+
+### Use Cases
+
+- **AI Assistant Integration**: Provide context about server state for debugging and analysis
+- **Automated Monitoring**: Programmatic access to server metrics and health
+- **Debugging**: Quick overview of system state, errors, and recent activity
+- **Performance Analysis**: Access to profiler data and request metrics
+
+For detailed testing instructions, see `crm-erp/var/docs/MANUAL_TESTING_AI_DEV_TOOLS.md`.
 
 ## Development
 

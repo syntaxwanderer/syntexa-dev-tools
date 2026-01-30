@@ -300,6 +300,7 @@ HTML;
             <button class="tab active" data-tab="metrics">Metrics</button>
             <button class="tab" data-tab="logs">Logs</button>
             <button class="tab" data-tab="profiler">Profiler</button>
+            <button class="tab" data-tab="blockchain">Blockchain</button>
         </div>
         
         <div id="metrics" class="tab-content active">
@@ -344,6 +345,24 @@ HTML;
                 <div id="profilerEvents"></div>
             </div>
         </div>
+        
+        <div id="blockchain" class="tab-content">
+            <div class="card">
+                <h2>Blockchain Overview</h2>
+                <div class="controls">
+                    <button class="refresh-btn" onclick="loadBlockchain()">Refresh</button>
+                </div>
+                <div id="blockchainOverview"></div>
+            </div>
+            <div class="card">
+                <h2>Nodes</h2>
+                <div id="blockchainNodes"></div>
+            </div>
+            <div class="card">
+                <h2>Recent Transactions</h2>
+                <div id="blockchainTransactions"></div>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -366,6 +385,8 @@ HTML;
                     loadLogs();
                 } else if (tab.dataset.tab === 'profiler') {
                     loadProfiler();
+                } else if (tab.dataset.tab === 'blockchain') {
+                    loadBlockchain();
                 }
             });
         });
@@ -391,6 +412,8 @@ HTML;
                     loadLogs();
                 } else if (activeTab === 'profiler') {
                     loadProfiler();
+                } else if (activeTab === 'blockchain') {
+                    loadBlockchain();
                 }
             }, 2000);
         }
@@ -572,6 +595,115 @@ HTML;
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        async function loadBlockchain() {
+            try {
+                // Load overview
+                const overviewRes = await fetch('/dev-tools/api/blockchain/overview');
+                const overview = await overviewRes.json();
+                
+                let overviewHtml = '';
+                if (!overview.enabled) {
+                    overviewHtml = '<p style="color: #8b949e;">Blockchain is not enabled</p>';
+                } else {
+                    overviewHtml = `
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">Total Nodes</div>
+                                <div class="metric-value">${overview.meta?.total_nodes || 0}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Total Transactions</div>
+                                <div class="metric-value">${overview.statistics?.total_transactions || 0}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Synced Nodes</div>
+                                <div class="metric-value">${overview.sync_status?.synced_nodes || 0}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Current Node</div>
+                                <div class="metric-value">${overview.meta?.current_node || 'unknown'}</div>
+                            </div>
+                        </div>
+                        <h3 style="margin-top: 20px;">Transactions by Operation</h3>
+                        <div class="metrics-grid">
+                            ${Object.entries(overview.statistics?.transactions_by_operation || {}).map(([op, count]) => `
+                                <div class="metric-card">
+                                    <div class="metric-label">${op}</div>
+                                    <div class="metric-value">${count}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                document.getElementById('blockchainOverview').innerHTML = overviewHtml;
+                
+                // Load nodes
+                const nodesRes = await fetch('/dev-tools/api/blockchain/nodes');
+                const nodesData = await nodesRes.json();
+                
+                let nodesHtml = '';
+                if (nodesData.nodes && nodesData.nodes.length > 0) {
+                    nodesHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">';
+                    nodesData.nodes.forEach(node => {
+                        nodesHtml += `
+                            <div class="metric-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <h3 style="margin: 0;">${node.name}</h3>
+                                    <span class="status-indicator ${node.status === 'online' ? 'status-online' : 'status-offline'}"></span>
+                                </div>
+                                <div style="color: #8b949e; font-size: 12px; margin-bottom: 10px;">ID: ${node.id}</div>
+                                <div class="metrics-grid" style="grid-template-columns: 1fr 1fr;">
+                                    <div class="metric-card" style="padding: 10px;">
+                                        <div class="metric-label" style="font-size: 11px;">Transactions</div>
+                                        <div class="metric-value" style="font-size: 18px;">${node.statistics?.total_transactions || 0}</div>
+                                    </div>
+                                    <div class="metric-card" style="padding: 10px;">
+                                        <div class="metric-label" style="font-size: 11px;">Last Activity</div>
+                                        <div class="metric-value" style="font-size: 11px; color: #8b949e;">
+                                            ${node.statistics?.last_transaction ? new Date(node.statistics.last_transaction).toLocaleString() : 'Never'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    nodesHtml += '</div>';
+                } else {
+                    nodesHtml = '<p style="color: #8b949e;">No nodes found</p>';
+                }
+                document.getElementById('blockchainNodes').innerHTML = nodesHtml;
+                
+                // Load transactions
+                const txRes = await fetch('/dev-tools/api/blockchain/transactions?limit=20');
+                const txData = await txRes.json();
+                
+                let txHtml = '';
+                if (txData.transactions && txData.transactions.length > 0) {
+                    txHtml = '<table style="width: 100%; border-collapse: collapse;"><thead><tr style="border-bottom: 1px solid #21262d;"><th style="text-align: left; padding: 10px;">Transaction ID</th><th style="text-align: left; padding: 10px;">Node</th><th style="text-align: left; padding: 10px;">Entity</th><th style="text-align: left; padding: 10px;">Operation</th><th style="text-align: left; padding: 10px;">Timestamp</th></tr></thead><tbody>';
+                    txData.transactions.forEach(tx => {
+                        const txIdShort = tx.transaction_id ? tx.transaction_id.substring(0, 16) + '...' : 'N/A';
+                        const entityShort = tx.entity_class ? tx.entity_class.split('\\\\').pop() : 'N/A';
+                        txHtml += `
+                            <tr style="border-bottom: 1px solid #21262d;">
+                                <td style="padding: 10px; font-family: monospace; font-size: 12px;">${txIdShort}</td>
+                                <td style="padding: 10px;">${tx.node_id}</td>
+                                <td style="padding: 10px;">${entityShort}</td>
+                                <td style="padding: 10px;">${tx.operation}</td>
+                                <td style="padding: 10px; color: #8b949e; font-size: 12px;">${tx.timestamp ? new Date(tx.timestamp).toLocaleString() : 'N/A'}</td>
+                            </tr>
+                        `;
+                    });
+                    txHtml += '</tbody></table>';
+                } else {
+                    txHtml = '<p style="color: #8b949e;">No transactions found</p>';
+                }
+                document.getElementById('blockchainTransactions').innerHTML = txHtml;
+            } catch (error) {
+                console.error('Error loading blockchain data:', error);
+                document.getElementById('blockchainOverview').innerHTML = '<p style="color: #f85149;">Error loading blockchain data</p>';
+            }
         }
         
         // Initialize
